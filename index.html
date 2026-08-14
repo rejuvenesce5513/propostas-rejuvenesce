@@ -407,6 +407,8 @@
   // ---------- Detecção de ambiente ----------
   var ua = navigator.userAgent || "";
   var isIOS = /iP(hone|ad|od)/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var isAndroid = /Android/i.test(ua);
+  var isMobile = isIOS || isAndroid; // celular/tablet -> compartilhar; desktop -> baixar direto
   var inAppBrowser = /(FBAN|FBAV|FB_IAB|Instagram|Line\/|Twitter|LinkedInApp|Snapchat|Pinterest|MicroMessenger|GSA\/)/.test(ua);
   if(isIOS && inAppBrowser){ document.getElementById("banner").classList.add("show"); }
   if(isIOS){ document.getElementById("hint").textContent = "No iPhone/iPad: se aparecer o menu de compartilhar, salve em Fotos ou envie no WhatsApp. Se abrir a imagem numa aba, segure o dedo nela e toque em “Salvar em Fotos”."; }
@@ -419,7 +421,7 @@
   function saveImage(){
     var btn=document.getElementById("btn-save");
     var txt=btn.getAttribute("data-label"); if(!txt){txt=btn.textContent;btn.setAttribute("data-label",txt);}
-    var canUseShare = !!(navigator.canShare && navigator.share && typeof File !== "undefined");
+    var canUseShare = isMobile && !!(navigator.canShare && navigator.share && typeof File !== "undefined");
     // No iOS sem share nativo: reserva uma aba AGORA (dentro do gesto) para não ser bloqueada
     var preWin = (!canUseShare && isIOS) ? window.open("", "_blank") : null;
 
