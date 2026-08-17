@@ -426,10 +426,11 @@
     var preWin = (!canUseShare && isIOS) ? window.open("", "_blank") : null;
 
     btn.textContent="Gerando..."; btn.disabled=true;
-    var node=document.getElementById("sheet"), prevW=node.style.width;
-    node.style.width="720px";
-    html2canvas(node,{scale:2,backgroundColor:"#f7f3ea",width:720,windowWidth:720,useCORS:true}).then(function(canvas){
-      node.style.width=prevW;
+    var node=document.getElementById("sheet"), prevW=node.style.width, prevMax=node.style.maxWidth;
+    node.style.width="720px"; node.style.maxWidth="720px";
+    // windowWidth alto força o layout desktop na captura (evita o breakpoint mobile e a faixa bege lateral)
+    html2canvas(node,{scale:2,backgroundColor:"#f7f3ea",windowWidth:1280,windowHeight:node.scrollHeight+80,useCORS:true}).then(function(canvas){
+      node.style.width=prevW; node.style.maxWidth=prevMax;
       var fname="proposta-"+slug(val("f_paciente"))+".jpg";
       function reset(m){btn.textContent=m||"✓ Pronto!";setTimeout(function(){btn.textContent=txt;btn.disabled=false;},2000);}
       function idle(){btn.textContent=txt;btn.disabled=false;}
@@ -454,7 +455,7 @@
         setTimeout(function(){URL.revokeObjectURL(url);},60000);
       },"image/jpeg",0.95);
     }).catch(function(e){
-      node.style.width=prevW; if(preWin)preWin.close(); console.error(e);
+      node.style.width=prevW; node.style.maxWidth=prevMax; if(preWin)preWin.close(); console.error(e);
       btn.textContent="Erro — tente de novo"; btn.disabled=false;
       setTimeout(function(){btn.textContent=txt;},2400);
     });
