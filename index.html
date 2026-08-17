@@ -81,9 +81,15 @@
   .body{padding:26px 40px 34px}
   .sec-title{font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--verde2);border-bottom:2px solid var(--linha);padding-bottom:6px;margin:0 0 14px}
   .sec+.sec{margin-top:26px}
-  .block+.block{margin-top:18px}
-  .block-title{font-size:13px;font-weight:800;color:var(--verde);text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px;display:flex;align-items:center;gap:9px}
-  .block-title .dot{width:16px;height:16px;border-radius:5px;background:var(--ouro);flex:none}
+  .block{position:relative;border:1px solid var(--linha);border-radius:12px;padding:14px 18px 10px 20px;background:#fffdf8;overflow:hidden}
+  .block+.block{margin-top:16px}
+  .block::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--acc,var(--ouro))}
+  .block-head{display:flex;align-items:center;gap:9px;margin:0 0 8px}
+  .block-head .bt{font-size:13px;font-weight:800;color:var(--verde);text-transform:uppercase;letter-spacing:.04em}
+  .block-head .tag{margin-left:auto;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--acc,var(--ouro));padding:3px 10px;border-radius:20px;white-space:nowrap}
+  .block-sub{display:flex;justify-content:space-between;align-items:baseline;border-top:2px solid var(--linha);margin-top:6px;padding-top:10px}
+  .block-sub .sl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--cinza)}
+  .block-sub .sv{font-size:15px;font-weight:800;color:var(--verde)}
   .items{list-style:none;margin:0;padding:0}
   .items li{display:flex;justify-content:space-between;align-items:baseline;gap:14px;padding:8px 0;border-bottom:1px dashed #e2dcc9;font-size:14px}
   .items li .t{color:var(--tinta);display:flex;gap:9px;align-items:baseline}
@@ -181,8 +187,12 @@
       <p class="gt">Valor Total Regular</p>
       <label class="toggle sub-toggle"><input type="checkbox" id="on_total" checked><span>Exibir valor total (riscado)</span></label>
       <div class="collapse" data-collapse="total">
-        <label>Valor</label>
-        <input type="text" id="f_total" value="R$ 22.000,00">
+        <p style="font-size:12px;color:var(--cinza);margin:8px 0 0">Somado automaticamente dos itens: <b id="auto_total_disp" style="color:var(--verde);font-size:14px">R$ 0,00</b></p>
+        <label class="toggle sub-toggle" style="margin-top:10px"><input type="checkbox" id="manual_total"><span>Ajustar manualmente</span></label>
+        <div class="collapse hidden" data-collapse="manual_total">
+          <label>Valor manual</label>
+          <input type="text" id="f_total" value="R$ 22.000,00">
+        </div>
       </div>
     </div>
 
@@ -302,6 +312,9 @@
   };
 
   function esc(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+  function parseBRL(s){ if(!s) return 0; var m=(""+s).replace(/[^\d.,-]/g,""); if(!m) return 0; m=m.replace(/\./g,"").replace(",","."); var n=parseFloat(m); return isNaN(n)?0:n; }
+  function fmtBRL(n){ return "R$ "+Number(n).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function subtotal(key){ var s=0; data[key].forEach(function(it){ s+=parseBRL(it.v); }); return s; }
   function boldLead(l){return esc(l).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>");}
   function val(id){var e=document.getElementById(id);return e?e.value:"";}
   function on(id){var e=document.getElementById(id);return e?e.checked:false;}
@@ -327,13 +340,17 @@
     });
   }
 
-  function blockHTML(key,title){
+  function blockHTML(key,title,acc,idx){
     if(!data[key].length) return "";
     var lis=data[key].map(function(it){
       var inc=/^\s*inclus/i.test(it.v);
       return '<li><span class="t"><span class="ck">✓</span>'+esc(it.t)+'</span><span class="p'+(inc?' inc':'')+'">'+esc(it.v)+'</span></li>';
     }).join("");
-    return '<div class="block"><p class="block-title"><span class="dot"></span>'+esc(title)+'</p><ul class="items">'+lis+'</ul></div>';
+    return '<div class="block" style="--acc:'+acc+'">'+
+             '<div class="block-head"><span class="bt">'+esc(title)+'</span><span class="tag">Produto '+idx+'</span></div>'+
+             '<ul class="items">'+lis+'</ul>'+
+             '<div class="block-sub"><span class="sl">Subtotal deste produto</span><span class="sv">'+fmtBRL(subtotal(key))+'</span></div>'+
+           '</div>';
   }
 
   function payCardHTML(kind){
@@ -350,16 +367,20 @@
     document.getElementById("p_valid").textContent=val("f_valid");
     document.getElementById("p_foot_valid").textContent="Proposta válida até "+val("f_valid");
 
-    // Blocos de produto
-    var html="";
-    if(on("on_transplante")) html+=blockHTML("transplante", val("t_transplante"));
-    if(on("on_terapia"))     html+=blockHTML("terapia", val("t_terapia"));
+    // Blocos de produto (cada um com etiqueta e subtotal)
+    var blocks=[];
+    if(on("on_transplante")) blocks.push({key:"transplante",title:val("t_transplante"),acc:"var(--verde2)"});
+    if(on("on_terapia"))     blocks.push({key:"terapia",title:val("t_terapia"),acc:"var(--ouro)"});
+    var html=blocks.map(function(b,i){return blockHTML(b.key,b.title,b.acc,i+1);}).join("");
     if(!html) html='<p style="color:#9aa5a0;font-size:13px;margin:6px 0">Marque ao menos um bloco de produto.</p>';
     document.getElementById("p_blocks").innerHTML=html;
 
-    // Total
+    // Total automático (soma dos subtotais dos blocos exibidos)
+    var auto=0; blocks.forEach(function(b){ auto+=subtotal(b.key); });
+    document.getElementById("auto_total_disp").textContent=fmtBRL(auto);
+    var totalTxt = on("manual_total") ? val("f_total") : fmtBRL(auto);
     var tw=document.getElementById("p_total_wrap");
-    if(on("on_total")){ tw.classList.remove("hide"); document.getElementById("p_total").textContent=val("f_total"); }
+    if(on("on_total")){ tw.classList.remove("hide"); document.getElementById("p_total").textContent=totalTxt; }
     else tw.classList.add("hide");
 
     // Pagamento
@@ -467,8 +488,8 @@
   renderItemsEditor("terapia");
   wireToggle("on_transplante","g_transplante","transplante");
   wireToggle("on_terapia","g_terapia","terapia");
-  ["on_total","on_parcelado","on_vista","on_gift"].forEach(function(id){document.getElementById(id).addEventListener("change",function(){
-    var map={on_total:"total",on_parcelado:"parcelado",on_vista:"vista",on_gift:"gift"};
+  ["on_total","on_parcelado","on_vista","on_gift","manual_total"].forEach(function(id){document.getElementById(id).addEventListener("change",function(){
+    var map={on_total:"total",on_parcelado:"parcelado",on_vista:"vista",on_gift:"gift",manual_total:"manual_total"};
     var col=document.querySelector('[data-collapse="'+map[id]+'"]'); if(col) col.classList.toggle("hidden",!this.checked);
     renderPreview();
   });});
