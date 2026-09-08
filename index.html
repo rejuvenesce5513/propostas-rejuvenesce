@@ -549,7 +549,6 @@ Não é subconjunto dos leads acima: inclui remarcações, retornos e quem agend
 <div id="viewMts" style="display:none">
 <div id="mtLock" class="msg warn" style="display:none"></div>
 <div id="mtBody">
-<div id="mtAviso" class="msg warn" style="display:none;margin-bottom:12px"></div>
 <section class="card">
   <div class="card-head"><h2>Meta da clínica</h2><span class="eyebrow" id="mtMes"></span></div>
   <div class="stats" style="align-items:flex-end">
@@ -712,7 +711,7 @@ Não é subconjunto dos leads acima: inclui remarcações, retornos e quem agend
    ═══════════════════════════════════════════════════════════════════════ */
 /* NATIVO-INICIO */
 const NATIVO = {
-  "versao": "4",
+  "versao": "3",
   "admins": "fabricio.araujo@clinicarejuvenesce.com.br",
   "chaveAdmin": "cfg_rjvnsc",
   "tenant": "89aed341-1dc6-4d0d-b5c7-e8df4293d21d",
@@ -740,7 +739,7 @@ const NATIVO = {
   "equipePre": "Beatriz,Fabiana,Amanda",
   "onlyPrimeira": true,
   "ignoraZero": true,
-  "incluirOrfas": false,
+  "incluirOrfas": true,
   "coorte": "fechamento",
   "mesesCheios": true,
   "autoEntrar": true,
@@ -768,7 +767,7 @@ const NATIVO = {
       ]
     },
     {
-      "e": "francis@clinicarejuvenesce.com.br",
+      "e": "francis.arantes@clinicarejuvenesce.com.br",
       "t": [
         "com",
         "pre",
@@ -847,7 +846,7 @@ const NATIVO = {
   "dedupMin": 5,
   "arqRegras": "https://rejuvenesce.sharepoint.com/sites/ClnicaRejuvenesce-Comercial/Documentos%20Compartilhados/Parametros%20Comissões.xlsx",
   "shRegras": "Parâmetros Comissões",
-  "regrasComissao": ""
+  "regrasComissao": "# ─── VENDEDORES ───\nvigencia vendedores: 01/05/2026\nfaixa vendedor: 0 a 400000 = 0,1%\nfaixa vendedor: 400000 a 700000 = 0,2%\nfaixa vendedor: 700000 a acima = 0,3%\n\n# regra anterior a maio/2026\nregra anterior tc: 0,5%\ngatilho tc: 400000\nregra anterior tec: 0%\nexcecao vendedor: Larissa Mendes de Souza\nexcecao tec: 1%\nexcecao tc: 0%\n\n# ─── SUPERVISÃO ───\nvigencia supervisao: 01/09/2026\nbase transplante: 2300000\nservicos transplante: TC,TB,TS,BH\nfaixa transplante: 2300000 a 2500000 = 0,4%\nfaixa transplante: 2500000 a 3000000 = 0,6%\nfaixa transplante: 3000000 a 3500000 = 0,8%\nfaixa transplante: 3500000 a 4000000 = 1%\nfaixa transplante: 4000000 a 5000000 = 1,25%\nfaixa transplante: 5000000 a acima = 1,5%\n\nbase terapia: 235000\nservicos terapia: TEC,CM\nfaixa terapia: 235000 a 250000 = 1%\nfaixa terapia: 250000 a 300000 = 1,25%\nfaixa terapia: 300000 a 400000 = 1,5%\nfaixa terapia: 400000 a 500000 = 2%\nfaixa terapia: 500000 a acima = 2,5%\n\n# ─── PAGAMENTO ───\nparcela inicial tc: 40%\nparcela complementar tc: 60%\nparcela terapia: 100%\ndefasagem meses: 1\n\n# ─── ELEGIBILIDADE ───\netapas elegiveis: FECHAMENTO,FINALIZADO"
 };
 /* NATIVO-FIM */
 
@@ -861,9 +860,7 @@ const DEF={versao:"",admins:"",chaveAdmin:"",metas:{},superPct:10,arqMetas:"",sh
   refresh:10,splitTC:90,splitTE:10,mapTC:"TC,TB,TS,BH",mapTE:"TEC",ignorar:"Sem deal comercial,—,JARVYS",marcaAgendada:"Data Agendada",stRealizada:"Atendido",stNoShow:"Não compareceu",stRemarcada:"Remarcado",stFuturo:"Marcado",stCancelado:"Desmarcado pelo paciente,Cancelado pelo profissional",mesesCheios:true,shParams:"Parâmetros Comissões",arqParams:"",emailsComissao:"",equipePre:"Beatriz,Fabiana,Amanda",incluirOrfas:false,etapasVenda:"FECHAMENTO,FINALIZADO,REVISAO DE PENDENCIAS",onlyPrimeira:true,ignoraZero:true,coorte:"fechamento"};
 // versao nova zera preferencias, mas NUNCA o que e conexao/credencial
 if(store.get("rjv.cfgv")!==NATIVO.versao){
-  // credenciais e DADOS do usuario: nunca apagar ao subir a versao
-  const CONEXAO=["tenant","client","file","ghRepo","ghWf","ghToken","regrasComissao",
-                 "metas","superPct"];
+  const CONEXAO=["tenant","client","file","ghRepo","ghWf","ghToken","regrasComissao"];
   let antigo={}; try{ antigo=JSON.parse(store.get("rjv.cfg")||"{}"); }catch(e){}
   const mantem={}; for(const k of CONEXAO)if(antigo[k])mantem[k]=antigo[k];
   store.set("rjv.cfg",JSON.stringify(mantem));
@@ -1919,20 +1916,14 @@ function editorMetas(){
   const rasc=(CFG.metas||{})[MT_MES];
   const m=rasc?{tc:toNum(rasc.tc),te:toNum(rasc.te),vend:rasc.vend||{}}:(metasDoMes(MT_MES)||{tc:0,te:0,vend:{}});
   const nomeMes=new Date(p.a).toLocaleDateString("pt-BR",{month:"long",year:"numeric",timeZone:"UTC"});
-  const soLocal=!!rasc&&remoto;
   $("mtMes").textContent=nomeMes+(remoto?" · sincronizado com a planilha de metas"
     :(podeEditar?"":" · somente leitura"));
-  $("mtAviso").style.display=soLocal?"":"none";
-  if(soLocal)$("mtAviso").innerHTML=
-    "<b>Estes valores estão só neste navegador.</b> Ninguém mais os vê. "+
-    "Clique em <b>Gravar na planilha de metas</b> para publicá-los para a equipe.";
   $("mtTC").value=m.tc||""; $("mtTE").value=m.te||"";
   $("mtPct").value=toNum(CFG.superPct)||10; $("mtPctL").textContent=toNum(CFG.superPct)||10;
   ["mtTC","mtTE","mtPct"].forEach(id=>$(id).disabled=!podeEditar);
   ["mtAdd","mtImport","mtCopiar"].forEach(id=>$(id).style.display=podeEditar?"":"none");
   $("mtSalvar").style.display=(podeEditar&&!remoto)?"":"none";
   $("mtGravar").style.display=(podeEditar&&remoto)?"":"none";
-  $("mtGravar").textContent=soLocal?"Gravar na planilha de metas ⚠":"Gravar na planilha de metas";
   $("mtAbrir").style.display=CFG.arqMetas?"":"none";
   if(METAS_ERRO&&CFG.arqMetas)$("mtSub").textContent="Erro ao ler o arquivo de metas: "+METAS_ERRO;
 
